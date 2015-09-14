@@ -1,0 +1,31 @@
+{
+    "appKeys": {
+        "KEY_SUNRISE": 0,
+        "KEY_SUNSET": 1
+    },
+    "capabilities": [
+        "location"
+    ],
+    "companyName": "Gapp",
+    "longName": "Mikes",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/starspurple.png",
+                "name": "IMAGE_STARS",
+                "type": "png"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Mikes",
+    "targetPlatforms": [
+        "basalt"
+    ],
+    "uuid": "929006e9-c86e-4d1d-a66e-3527d1be349e",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
