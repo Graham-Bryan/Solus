@@ -12,6 +12,11 @@
     "resources": {
         "media": [
             {
+                "file": "images/solusIcon2.png",
+                "name": "ICON",
+                "type": "png"
+            },
+            {
                 "file": "images/starspurple.png",
                 "name": "IMAGE_STARS",
                 "type": "png"

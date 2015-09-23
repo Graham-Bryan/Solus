@@ -31,12 +31,15 @@ static int pivot_radius = 26;
 static int second_radius = 50;
 
 static int32_t sunrise_t = 6 * 60 * 60;
-static int32_t sunset_t = 20 * 60 * 60;
+static int32_t sunset_t = 18 * 60 * 60;
 static float daylight_t = 0.0f;
 
 static bool requested = false;
-static GColor colors[5];
+static GColor colors[6];
 
+static bool testMode = false;
+static int currentHour = 0;
+static int currentMin = 0;
 
 static GPoint get_orbital_position(int angle, int dist, int size)
 {
@@ -132,55 +135,67 @@ static void update_time()
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
   
+  if (testMode)
+  {
+    if ((currentHour == 0)&&(currentMin == 0))
+    {
+      currentHour = 17;
+      currentMin = 0;
+    }else{
+      currentMin += 1;
+      if (currentMin == 60)
+      {
+        currentHour += 1;
+        currentMin = 0;
+        if (currentHour == 24)
+          currentHour = 0;
+      }  
+    }
+  }else{
+      currentHour = tick_time->tm_hour;
+      currentMin = tick_time->tm_min;
+  }
 
-  int t = tick_time->tm_sec;
-  t += tick_time->tm_min * 60;
-  t += tick_time->tm_hour * 60 * 60;
+  int t = currentMin * 60;
+  t += currentHour * 60 * 60;
 
   float a = (t - sunrise_t);
   float b = (sunset_t - sunrise_t);
   daylight_t =  animation_curve_value(a / b);
   int start = -100;
   int end = window_bounds.size.h;
-  
-  
 
- 
-  
-
-
-
-  if ((daylight_t <= 0.0f)||(daylight_t >= 1.0f))
+  if ((daylight_t < 0.0f)||(daylight_t > 1.0f))
   {
-      window_set_background_color(s_app_window, colors[0]); 
-          sphere_layer_change_color(s_pivot_layer, GColorWhite);
+      sphere_layer_change_color(s_pivot_layer, GColorWhite);
       sphere_layer_change_color(s_minute_layer, GColorWhite);
       sphere_layer_change_color(s_hour_layer, GColorWhite);  
-          layer_insert_below_sibling((Layer*)s_star_layer, s_daylight_layer); 
-  }else if ((daylight_t < 0.05f)||(daylight_t > 0.95f)){
-      window_set_background_color(s_app_window, colors[1]); 
+  }else{
       sphere_layer_change_color(s_pivot_layer, GColorBlack);
       sphere_layer_change_color(s_minute_layer, GColorBlack);
-      sphere_layer_change_color(s_hour_layer, GColorBlack);        
-    layer_insert_below_sibling((Layer*)s_star_layer, s_daylight_layer); 
-    }else if ((daylight_t < 0.1f)||(daylight_t > 0.9f)){
-          sphere_layer_change_color(s_pivot_layer, GColorBlack);
-      sphere_layer_change_color(s_minute_layer, GColorBlack);
-      sphere_layer_change_color(s_hour_layer, GColorBlack);    
-      layer_remove_from_parent((Layer*)s_star_layer); 
+      sphere_layer_change_color(s_hour_layer, GColorBlack);       
+  }
+
+  if ((daylight_t <= -0.5f)||(daylight_t >= 1.5f))
+  {
+      window_set_background_color(s_app_window, colors[0]);  
+      layer_insert_below_sibling((Layer*)s_star_layer, s_daylight_layer); 
+  }else if ((daylight_t <= -0.1f)||(daylight_t >= 1.1f))
+  {
+      window_set_background_color(s_app_window, colors[1]); 
+      layer_insert_below_sibling((Layer*)s_star_layer, s_daylight_layer); 
+  }else if ((daylight_t < 0.0f)||(daylight_t > 1.0f)){
       window_set_background_color(s_app_window, colors[2]); 
-    }else if ((daylight_t < 0.15f)||(daylight_t > 0.85f)){
-          sphere_layer_change_color(s_pivot_layer, GColorBlack);
-      sphere_layer_change_color(s_minute_layer, GColorBlack);
-      sphere_layer_change_color(s_hour_layer, GColorBlack);    
+      layer_remove_from_parent((Layer*)s_star_layer); 
+    }else if ((daylight_t < 0.1f)||(daylight_t > 0.9f)){  
       layer_remove_from_parent((Layer*)s_star_layer); 
       window_set_background_color(s_app_window, colors[3]); 
-    }else{
-          sphere_layer_change_color(s_pivot_layer, GColorBlack);
-      sphere_layer_change_color(s_minute_layer, GColorBlack);
-      sphere_layer_change_color(s_hour_layer, GColorBlack);    
+    }else if ((daylight_t < 0.15f)||(daylight_t > 0.85f)){  
       layer_remove_from_parent((Layer*)s_star_layer); 
       window_set_background_color(s_app_window, colors[4]); 
+    }else{   
+      layer_remove_from_parent((Layer*)s_star_layer); 
+      window_set_background_color(s_app_window, colors[5]); 
     }
 
 
@@ -193,14 +208,14 @@ static void update_time()
   
 
 
-  minute_angle = TRIG_MAX_ANGLE * tick_time->tm_min / 60;
+  minute_angle = TRIG_MAX_ANGLE * currentMin / 60;
   GRect minute_frame = layer_get_frame(s_minute_layer);
   GPoint minute_hand = get_orbital_position(minute_angle, minute_orbit_dist, minute_radius);  
 
   minute_frame.origin = minute_hand;
   layer_set_frame(s_minute_layer, minute_frame); 
 
-  hour_angle = (TRIG_MAX_ANGLE * tick_time->tm_hour / 12) + (minute_angle / 12);
+  hour_angle = (TRIG_MAX_ANGLE * currentHour / 12) + (minute_angle / 12);
   GRect hour_frame = layer_get_frame(s_hour_layer);
   GPoint hour_hand = get_orbital_position(hour_angle, hour_orbit_dist, hour_radius);
 
@@ -215,9 +230,11 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 
   update_time();
   
-  animate_minute_hand();  
-  //if (tick_time->tm_min == 0)
+  if (!testMode)
+  {
+    animate_minute_hand();  
     animate_hour_hand();
+  }
 }
 
 
@@ -228,7 +245,9 @@ static void main_window_load(Window *window) {
   window_bounds = layer_get_frame(window_get_root_layer(window));
   window_center = grect_center_point(&window_bounds);
   
-    s_star_layer = bitmap_layer_create(window_bounds);
+  s_star_layer = bitmap_layer_create(window_bounds);
+  bitmap_layer_set_background_color (s_star_layer, GColorClear);
+  bitmap_layer_set_compositing_mode(s_star_layer, GCompOpSet );
   bitmap_layer_set_bitmap(s_star_layer,   gbitmap_create_with_resource(RESOURCE_ID_IMAGE_STARS));
 
   s_daylight_layer = sphere_layer_create(GPoint((window_bounds.size.w / 2),(window_bounds.size.h / 2)), GColorWhite, second_radius);
@@ -307,10 +326,11 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 void handle_init(void) {
 
   colors[0] = GColorBlack;
-  colors[1] = GColorPurple;
-  colors[2] = GColorFashionMagenta;
-  colors[3] = GColorChromeYellow;
-  colors[4] = GColorYellow;
+  colors[1] = GColorImperialPurple;
+  colors[2] = GColorPurple;
+  colors[3] = GColorFashionMagenta;
+  colors[4] = GColorChromeYellow;
+  colors[5] = GColorYellow;
   
   app_message_register_inbox_received(inbox_received_callback);
   app_message_register_inbox_dropped(inbox_dropped_callback);
@@ -333,7 +353,7 @@ void handle_init(void) {
          
   
   
-  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  tick_timer_service_subscribe((testMode)?SECOND_UNIT:MINUTE_UNIT, tick_handler);
 }
 
 void handle_deinit(void) {
